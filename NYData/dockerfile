@@ -1,0 +1,24 @@
+FROM rocker/shiny:3.5.1
+
+RUN apt-get update -y
+RUN apt-get update && apt-get install -y cmake make gcc libtool git 
+RUN sudo apt install -y clang-format cmake-curses-gui lcov doxygen
+RUN mkdir build && cd build
+RUN cmake .. -DCMAKE_FLAGS=VALUES
+RUN make 
+RUN sudo apt install dirmngr gnupg apt-transport-https ca-certificates software-properties-common
+RUN sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9
+RUN sudo add-apt-repository 'deb https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/'
+RUN sudo apt install r-base
+RUN sudo apt install build-essential
+RUN git clone https://github.com/crazycapivara/h3-r.git
+RUN pushd h3-r
+RUN chmod +x install-h3c.sh
+RUN ./install-h3c.sh
+RUN R -q -e 'devtools::install()'
+RUN popd
+RUN rm -rf h3-r
+
+ENTRYPOINT ["Rscript"]
+EXPOSE 6468
+CMD ["app.R"]

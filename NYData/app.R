@@ -1,3 +1,13 @@
+# system(command = "sudo apt install cmake make gcc libtool")
+# system(command = "sudo apt install clang-format cmake-curses-gui lcov doxygen")
+# system(command = "sudo make install")
+# system(command = "git clone https://github.com/crazycapivara/h3-r.git")
+# system(command = "pushd h3-r")
+# system(command = "chmod +x install-h3c.sh")
+# system(command = "./install-h3c.sh")
+# system(command = "R -q -e 'devtools::install()'")
+# system(command = "popd")
+# system(command = "rm -rf h3-r")
 ### APP Hexagons
 
 library(data.table)
@@ -9,12 +19,13 @@ library(tibble)
 library(lubridate)
 library(leaflet)
 library(shiny)
+options(shiny.port = 6468)
 library(shinycssloaders)
 library(shinythemes)
 
-accidents<- fread("~/Descargas/Motor_Vehicle_Collisions_-_Crashes.csv")
+accidents<- fread("data/Motor_Vehicle_Collisions_-_Crashes.csv")
 
-delitos<- fread("~/Descargas/NYPD_Complaint_Data_Historic.csv")
+delitos<- fread("data/NYPD_Complaint_Data_Historic.csv")
 
 accidents= accidents %>% 
     mutate(`CRASH DATE` = as.Date(`CRASH DATE`, "%m/%d/%Y")) %>% 
@@ -31,7 +42,8 @@ delitos= delitos %>%
            Longitude< -70,
            Longitude>-80,
            !is.na(Latitude),
-           !is.na(Longitude))
+           !is.na(Longitude),
+           year(CMPLNT_FR_DT)==2019)
 
 button_color_css <- "
           .glyphicon-play,
@@ -101,7 +113,7 @@ ui <- fluidPage(
                                                        animate = animationOptions(interval = 500, loop = TRUE))
                                     )),
                                 
-                                leafletOutput("mymap",height = 700)
+                                leafletOutput("mymap",height = 550)
                                 
                                 
                                 
@@ -134,17 +146,17 @@ ui <- fluidPage(
                                                                     label = "Borough",
                                                                     choices = levels(ordered(delitos$BORO_NM)),
                                                                     selected = "BRONX"),
-                                        
-                                
-                                                checkboxGroupInput(inputId = "cat2",
-                                                                      label = "Category",
-                                                                      choices = levels(ordered(delitos$LAW_CAT_CD)),
-                                                                      selected = "MISDEMEANOR"),
-                                        
+                                                 
+                                                 
+                                                 checkboxGroupInput(inputId = "cat2",
+                                                                    label = "Category",
+                                                                    choices = levels(ordered(delitos$LAW_CAT_CD)),
+                                                                    selected = "MISDEMEANOR"),
+                                                 
                                                  hr(),
                                                  actionButton(inputId = "Clic2", label = 'Filtrar datos')
                                 )
-                            )
+                                )
                             )
                             
                             ,
@@ -160,11 +172,11 @@ ui <- fluidPage(
                                                        animate = animationOptions(interval = 500, loop = TRUE))
                                     )),
                                 
-                                leafletOutput("mymap2", height = 700)
+                                leafletOutput("mymap2", height = 670)
                                 
                                 
-
-                                                                
+                                
+                                
                             )
                         )
                )
@@ -243,7 +255,7 @@ ui <- fluidPage(
 
 server <- function(input, output) {
     
- 
+    
     
     
     output$mymap <- renderLeaflet({
@@ -315,31 +327,31 @@ server <- function(input, output) {
     })
     
     reactivo2 <- eventReactive(input$Clic2,
-                              {
-                                  hex_s= input$hl2
-                                  bor_s=input$bor2
-                                  year_s=input$year2
-                                  datos=delitos %>%
-                                      mutate(year= year(CMPLNT_FR_DT)) %>%
-                                      filter(BORO_NM %in% bor_s,
-                                             year == year_s) %>%
-                                      mutate(hex = geo_to_h3(c(Latitude,Longitude),hex_s),
-                                             mes=month(CMPLNT_FR_DT)) %>%
-                                      group_by(hex,mes) %>%
-                                      summarise(
-                                          n=length(CMPLNT_NUM)
-                                      ) %>%
-                                      filter(hex!="0")
-                                  
-                                  hexagons= h3_to_geo_boundary_sf(datos$hex) %>%
-                                      mutate(
-                                          n=datos$n,
-                                          mes=datos$mes
-                                      )
-                                  
-                                  return(list(hexagons= hexagons))
-                                  
-                              })
+                               {
+                                   hex_s= input$hl2
+                                   bor_s=input$bor2
+                                   year_s=input$year2
+                                   datos=delitos %>%
+                                       mutate(year= year(CMPLNT_FR_DT)) %>%
+                                       filter(BORO_NM %in% bor_s,
+                                              year == year_s) %>%
+                                       mutate(hex = geo_to_h3(c(Latitude,Longitude),hex_s),
+                                              mes=month(CMPLNT_FR_DT)) %>%
+                                       group_by(hex,mes) %>%
+                                       summarise(
+                                           n=length(CMPLNT_NUM)
+                                       ) %>%
+                                       filter(hex!="0")
+                                   
+                                   hexagons= h3_to_geo_boundary_sf(datos$hex) %>%
+                                       mutate(
+                                           n=datos$n,
+                                           mes=datos$mes
+                                       )
+                                   
+                                   return(list(hexagons= hexagons))
+                                   
+                               })
     
     filteredData2 <- reactive({
         req(reactivo2())
